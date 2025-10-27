@@ -36,6 +36,7 @@ model Dishes {
     id Int @id @default(autoincrement())
     name String @unique
     description String?
+    image String?
     authorId Int
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now())
