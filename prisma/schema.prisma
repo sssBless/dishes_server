@@ -1,0 +1,91 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url = env("DATABASE_URL")
+}
+
+enum UserRole {
+    ADMIN
+    USER
+}
+
+enum DishStatus {
+    PENDING
+    REJECTED
+    ACCEPTED
+}
+
+model Users {
+    id Int @id @default(autoincrement())
+    username String
+    email String @unique
+    password String
+    salt String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now())
+
+    role UserRole @default(USER)
+
+    dishes Dishes[]
+}
+
+model Dishes {
+    id Int @id @default(autoincrement())
+    name String @unique
+    description String?
+    authorId Int
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now())
+
+    status DishStatus @default(PENDING)
+
+    author Users @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    ingredients DishIngredients[]
+}
+
+model Ingredients {
+    id Int @id @default(autoincrement())
+    name String @unique
+    abbreviation String
+    glycemicIndex Float
+    breadUnitsIn1g Float
+
+    dishes DishIngredients[]
+    nutrients IngredientNutrients[]
+}
+
+model Nutrients {
+    id Int @id @default(autoincrement())
+    name String @unique
+    unit String @default("g")
+
+    ingredients IngredientNutrients[]
+}
+
+model IngredientNutrients {
+    ingredientId Int
+    nutrientId Int
+    amountPer100g Float
+
+    ingredient Ingredients @relation(fields: [ingredientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    nutrient Nutrients @relation(fields: [nutrientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@id([ingredientId, nutrientId])
+    @@index([ingredientId])
+    @@index([nutrientId])
+}
+
+model DishIngredients {
+    dishId Int
+    ingredientId Int
+    quantity Float
+    dish Dishes @relation(fields: [dishId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    ingredient Ingredients @relation(fields: [ingredientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@id([dishId, ingredientId])
+    @@index([dishId])
+    @@index([ingredientId])
+}
