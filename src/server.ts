@@ -3,8 +3,17 @@ import Fastify, {
   FastifyRequest,
   HookHandlerDoneFunction,
 } from 'fastify';
-import fjwt, {JWT} from 'fastify-jwt';
+import {JWT} from 'fastify-jwt';
+import jwt from '@fastify/jwt';
+import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import userRoutes from './modules/user/user.route.js';
+import dishRoutes from './modules/dishes/dish.route.js';
+import ingredientRoutes from './modules/ingredients/ingredient.route.js';
+import nutrientRoutes from './modules/nutrients/nutrient.route.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -27,11 +36,22 @@ declare module 'fastify-jwt' {
 }
 
 function buildServer() {
-  const server = Fastify();
+  const server = Fastify().withTypeProvider<ZodTypeProvider>();
 
-  server.register(fjwt, {
-    secret:
-      process.env.JWT_SECRET || 'asdnalksdnkasckjasdkjndlknsalkdlknlk12312321',
+  // Register multipart for file uploads
+  server.register(multipart);
+
+  // Register static file serving
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  
+  server.register(fastifyStatic, {
+    root: path.join(__dirname, '../resources'),
+    prefix: '/images/',
+  });
+
+  server.register(jwt, {
+    secret: process.env.JWT_SECRET!,
   });
 
   server.decorate(
@@ -61,12 +81,11 @@ function buildServer() {
     }
   );
 
-  for (const schema of []) {
-    server.addSchema(schema);
-  }
-
-  server.register(userRoutes, {prefix: 'api/users'});
+  server.register(userRoutes, {prefix: '/api/users'});
+  server.register(dishRoutes, {prefix: '/api/dishes'});
+  server.register(ingredientRoutes, {prefix: '/api/ingredients'});
+  server.register(nutrientRoutes, {prefix: '/api/nutrients'});
   return server;
 }
 
-export default buildServer
+export default buildServer;
