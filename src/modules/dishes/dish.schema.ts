@@ -4,11 +4,14 @@ export const createDishSchema = z.object({
   body: z.object({
     name: z.string().min(1, "Name is required").max(100, "Name must be at most 100 characters"),
     description: z.string().max(500, "Description must be at most 500 characters").optional(),
+    recipe: z.string().max(2000, "Recipe must be at most 2000 characters").optional(),
+    cookingTime: z.number().int().positive("Cooking time must be positive").optional(),
     authorId: z.number().int().positive("Author ID must be a positive number"),
     ingredients: z.array(
       z.object({
         ingredientId: z.number().int().positive("Ingredient ID must be a positive number"),
         quantity: z.number().positive("Quantity must be positive"),
+        unit: z.string().min(1, "Unit is required").max(20, "Unit must be at most 20 characters").optional(),
       }).strict()
     ).optional(),
   }).strict()
@@ -21,6 +24,8 @@ export const updateDishSchema = z.object({
   body: z.object({
     name: z.string().min(1, "Name cannot be empty").max(100, "Name must be at most 100 characters").optional(),
     description: z.string().max(500, "Description must be at most 500 characters").optional(),
+    recipe: z.string().max(2000, "Recipe must be at most 2000 characters").optional(),
+    cookingTime: z.number().int().positive("Cooking time must be positive").optional(),
     status: z.enum(["PENDING", "REJECTED", "ACCEPTED"]).optional(),
   }).strict().refine(data => Object.keys(data).length > 0, {
     message: "At least one field must be provided"

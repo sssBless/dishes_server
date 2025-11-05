@@ -6,12 +6,8 @@ export const createIngredientSchema = z.object({
     abbreviation: z.string().min(1, "Abbreviation is required").max(10, "Abbreviation must be at most 10 characters"),
     glycemicIndex: z.number().min(0, "Glycemic index must be non-negative").max(100, "Glycemic index cannot exceed 100"),
     breadUnitsIn1g: z.number().positive("Bread units must be positive"),
-    nutrients: z.array(
-      z.object({
-        nutrientId: z.number().int().positive("Nutrient ID must be a positive number"),
-        amountPer100g: z.number().nonnegative("Amount must be non-negative"),
-      }).strict()
-    ).optional(),
+    caloriesPer100g: z.number().nonnegative("Calories per 100g must be non-negative"),
+    unit: z.string().min(1, "Unit is required").max(10, "Unit must be at most 10 characters").default("g"),
   }).strict()
 });
 
@@ -24,6 +20,8 @@ export const updateIngredientSchema = z.object({
     abbreviation: z.string().min(1, "Abbreviation cannot be empty").max(10, "Abbreviation must be at most 10 characters").optional(),
     glycemicIndex: z.number().min(0, "Glycemic index must be non-negative").max(100, "Glycemic index cannot exceed 100").optional(),
     breadUnitsIn1g: z.number().positive("Bread units must be positive").optional(),
+    caloriesPer100g: z.number().nonnegative("Calories per 100g must be non-negative").optional(),
+    unit: z.string().min(1, "Unit cannot be empty").max(10, "Unit must be at most 10 characters").optional(),
   }).strict().refine(data => Object.keys(data).length > 0, {
     message: "At least one field must be provided"
   })
@@ -32,33 +30,6 @@ export const updateIngredientSchema = z.object({
 export const ingredientIdSchema = z.object({
   params: z.object({
     id: z.string().regex(/^\d+$/, "ID must be a number"),
-  })
-});
-
-export const addNutrientSchema = z.object({
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID must be a number"),
-  }),
-  body: z.object({
-    nutrientId: z.number().int().positive("Nutrient ID must be a positive number"),
-    amountPer100g: z.number().nonnegative("Amount must be non-negative"),
-  }).strict()
-});
-
-export const updateIngredientNutrientSchema = z.object({
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "Ingredient ID must be a number"),
-    nutrientId: z.string().regex(/^\d+$/, "Nutrient ID must be a number"),
-  }),
-  body: z.object({
-    amountPer100g: z.number().nonnegative("Amount must be non-negative"),
-  }).strict()
-});
-
-export const removeNutrientSchema = z.object({
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "Ingredient ID must be a number"),
-    nutrientId: z.string().regex(/^\d+$/, "Nutrient ID must be a number"),
   })
 });
 

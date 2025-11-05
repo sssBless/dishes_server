@@ -31,29 +31,35 @@ export default class UserController {
     request: FastifyRequest<{Body: LoginInput}>,
     reply: FastifyReply
   ) {
-    const {email, password: candidate} = request.body;
-    const user = await UserService.findUserByEmail(email);
+    try {
+      const {email, password: candidate} = request.body;
+      const user = await UserService.findUserByEmail(email);
 
-    if (!user) {
+      if (!user) {
+        return reply.code(401).send({
+          message: 'Invalid email or password',
+        });
+      }
+
+      const {password: hash, salt, ...rest} = user;
+      const correctPassword = verifyPassword({
+        candidate,
+        hash,
+        salt,
+      });
+
+      if (correctPassword) {
+        const token = request.jwt.sign(rest, {expiresIn: '1h'});
+        return reply.code(200).send({accessToken: token});
+      }
+
       return reply.code(401).send({
         message: 'Invalid email or password',
       });
+    } catch (err: any) {
+      console.error(err);
+      return reply.code(500).send({message: 'Internal server error'});
     }
-
-    const {password: hash, salt, ...rest} = user;
-    const correctPassword = verifyPassword({
-      candidate,
-      hash,
-      salt,
-    });
-
-    if (correctPassword) {
-      return {accessToken: request.jwt.sign(rest, {expiresIn: '1h'})};
-    }
-
-    return reply.code(401).send({
-      message: 'Invalid email or password',
-    });
   }
 
   public static async getAllUsers() {

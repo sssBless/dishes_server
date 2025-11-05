@@ -1,5 +1,5 @@
 import {FastifyReply, FastifyRequest} from 'fastify';
-import IngredientService, {CreateIngredientInput, UpdateIngredientInput, IngredientNutrientInput} from './ingredient.service.js';
+import IngredientService, {CreateIngredientInput, UpdateIngredientInput} from './ingredient.service.js';
 
 export default class IngredientController {
     public static async createIngredient(
@@ -75,53 +75,5 @@ export default class IngredientController {
         }
     }
 
-    public static async addNutrient(
-        request: FastifyRequest<{Params: {id: string}, Body: {nutrientId: number, amountPer100g: number}}>,
-        reply: FastifyReply
-    ) {
-        try {
-            const ingredientId = parseInt(request.params.id);
-            const {nutrientId, amountPer100g} = request.body;
-            const ingredient = await IngredientService.addNutrientToIngredient(ingredientId, nutrientId, amountPer100g);
-            return reply.code(201).send(ingredient);
-        } catch (err: any) {
-            console.error(err);
-            return reply.code(500).send(err);
-        }
-    }
-
-    public static async updateNutrient(
-        request: FastifyRequest<{Params: {id: string, nutrientId: string}, Body: {amountPer100g: number}}>,
-        reply: FastifyReply
-    ) {
-        try {
-            const ingredientId = parseInt(request.params.id);
-            const nutrientId = parseInt(request.params.nutrientId);
-            const ingredient = await IngredientService.updateIngredientNutrient(
-                ingredientId,
-                nutrientId,
-                request.body.amountPer100g
-            );
-            return reply.code(200).send(ingredient);
-        } catch (err: any) {
-            console.error(err);
-            return reply.code(500).send(err);
-        }
-    }
-
-    public static async removeNutrient(
-        request: FastifyRequest<{Params: {id: string, nutrientId: string}}>,
-        reply: FastifyReply
-    ) {
-        try {
-            const ingredientId = parseInt(request.params.id);
-            const nutrientId = parseInt(request.params.nutrientId);
-            await IngredientService.removeNutrientFromIngredient(ingredientId, nutrientId);
-            return reply.code(200).send({message: 'Nutrient removed successfully'});
-        } catch (err: any) {
-            console.error(err);
-            return reply.code(500).send(err);
-        }
-    }
 }
 

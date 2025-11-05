@@ -3,6 +3,8 @@ import prisma from "../../utils/prisma.js";
 export interface CreateDishInput {
     name: string;
     description?: string;
+    recipe?: string;
+    cookingTime?: number;
     image?: string;
     authorId: number;
     ingredients?: DishIngredientInput[];
@@ -11,6 +13,8 @@ export interface CreateDishInput {
 export interface UpdateDishInput {
     name?: string;
     description?: string;
+    recipe?: string;
+    cookingTime?: number;
     image?: string;
     status?: 'PENDING' | 'REJECTED' | 'ACCEPTED';
 }
@@ -18,6 +22,7 @@ export interface UpdateDishInput {
 export interface DishIngredientInput {
     ingredientId: number;
     quantity: number;
+    unit?: string;
 }
 
 export default class DishService {
@@ -118,6 +123,8 @@ export default class DishService {
         const dataToUpdate: any = {};
         if (data.name !== undefined) dataToUpdate.name = data.name;
         if (data.description !== undefined) dataToUpdate.description = data.description;
+        if (data.recipe !== undefined) dataToUpdate.recipe = data.recipe;
+        if (data.cookingTime !== undefined) dataToUpdate.cookingTime = data.cookingTime;
         if (data.status !== undefined) dataToUpdate.status = data.status;
         if (data.image !== undefined) dataToUpdate.image = data.image;
         dataToUpdate.updatedAt = new Date();
@@ -165,7 +172,7 @@ export default class DishService {
                 },
                 ingredients: {
                     include: {
-                        ingredient: true,
+                        ingredient: true
                     }
                 }
             }
