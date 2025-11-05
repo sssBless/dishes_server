@@ -1,11 +1,7 @@
 import {FastifyReply, FastifyRequest} from 'fastify';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import DishService, {CreateDishInput, UpdateDishInput, DishIngredientInput} from './dish.service.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export interface ChangeStatusInput {
     status: 'PENDING' | 'REJECTED' | 'ACCEPTED';
@@ -154,7 +150,16 @@ export default class DishController {
             // Create unique filename
             const fileExtension = path.extname(data.filename);
             const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExtension}`;
-            const uploadPath = path.join(__dirname, '../../resources/dishes', uniqueFilename);
+            const dishesDir = path.join(process.cwd(), 'resources', 'dishes');
+            
+            // Ensure dishes directory exists
+            try {
+                await fs.mkdir(dishesDir, { recursive: true });
+            } catch (err) {
+                // Directory might already exist, ignore error
+            }
+            
+            const uploadPath = path.join(dishesDir, uniqueFilename);
 
             // Save file
             const buffer = await data.toBuffer();
@@ -166,7 +171,7 @@ export default class DishController {
 
             // Delete old image if exists
             if (dish.image) {
-                const oldImagePath = path.join(__dirname, '../../resources', dish.image);
+                const oldImagePath = path.join(process.cwd(), 'resources', dish.image);
                 try {
                     await fs.unlink(oldImagePath);
                 } catch (err) {

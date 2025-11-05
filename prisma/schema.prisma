@@ -36,6 +36,8 @@ model Dishes {
     id Int @id @default(autoincrement())
     name String @unique
     description String?
+    recipe String?
+    cookingTime Int? // время приготовления в минутах
     image String?
     authorId Int
     createdAt DateTime @default(now())
@@ -53,36 +55,17 @@ model Ingredients {
     abbreviation String
     glycemicIndex Float
     breadUnitsIn1g Float
-
-    dishes DishIngredients[]
-    nutrients IngredientNutrients[]
-}
-
-model Nutrients {
-    id Int @id @default(autoincrement())
-    name String @unique
+    caloriesPer100g Float @default(0)
     unit String @default("g")
 
-    ingredients IngredientNutrients[]
-}
-
-model IngredientNutrients {
-    ingredientId Int
-    nutrientId Int
-    amountPer100g Float
-
-    ingredient Ingredients @relation(fields: [ingredientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-    nutrient Nutrients @relation(fields: [nutrientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-    @@id([ingredientId, nutrientId])
-    @@index([ingredientId])
-    @@index([nutrientId])
+    dishes DishIngredients[]
 }
 
 model DishIngredients {
     dishId Int
     ingredientId Int
     quantity Float
+    unit String @default("g")
     dish Dishes @relation(fields: [dishId], references: [id], onDelete: Cascade, onUpdate: Cascade)
     ingredient Ingredients @relation(fields: [ingredientId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 

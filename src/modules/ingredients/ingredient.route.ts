@@ -3,10 +3,7 @@ import IngredientController from "./ingredient.controller.js";
 import {
   createIngredientSchema,
   updateIngredientSchema,
-  ingredientIdSchema,
-  addNutrientSchema,
-  updateIngredientNutrientSchema,
-  removeNutrientSchema
+  ingredientIdSchema
 } from "./ingredient.schema.js";
 
 async function ingredientRoutes(server: FastifyInstance) {
@@ -37,25 +34,6 @@ async function ingredientRoutes(server: FastifyInstance) {
       schema: ingredientIdSchema,
       preHandler: [server.authenticate],
       handler: IngredientController.deleteIngredient 
-    });
-    
-    // Nutrient management
-    server.post('/:id/nutrients', {
-      schema: addNutrientSchema,
-      preHandler: [server.authenticate],
-      handler: IngredientController.addNutrient 
-    });
-    
-    server.patch('/:id/nutrients/:nutrientId', {
-      schema: updateIngredientNutrientSchema,
-      preHandler: [server.authenticate],
-      handler: IngredientController.updateNutrient 
-    });
-    
-    server.delete('/:id/nutrients/:nutrientId', {
-      schema: removeNutrientSchema,
-      preHandler: [server.authenticate],
-      handler: IngredientController.removeNutrient 
     });
 }
 
