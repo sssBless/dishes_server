@@ -1,6 +1,7 @@
 import {FastifyReply, FastifyRequest} from 'fastify';
 import UserService, {CreateUserInput, UpdateUserInput} from './user.service.js';
 import {verifyPassword} from '../../utils/hash.js';
+import RefreshTokenService from './refreshToken.service.js';
 
 export interface LoginInput {
   email: string;
@@ -11,6 +12,10 @@ export interface UpdateUserRequestBody extends UpdateUserInput {}
 
 export interface ChangeRoleInput {
   role: 'ADMIN' | 'USER';
+}
+
+interface RefreshTokenInput {
+  refreshToken: string;
 }
 
 export default class UserController {
@@ -49,8 +54,15 @@ export default class UserController {
       });
 
       if (correctPassword) {
-        const token = request.jwt.sign(rest, {expiresIn: '1h'});
-        return reply.code(200).send({accessToken: token});
+        const payload = {
+          id: rest.id,
+          email: rest.email,
+          username: rest.username,
+          role: rest.role,
+        };
+        const token = request.jwt.sign(payload, {expiresIn: '1h'});
+        const {refreshToken} = await RefreshTokenService.create(rest.id);
+        return reply.code(200).send({accessToken: token, refreshToken});
       }
 
       return reply.code(401).send({
@@ -125,6 +137,42 @@ export default class UserController {
     } catch (err: any) {
       console.error(err);
       return reply.code(500).send(err);
+    }
+  }
+
+  public static async refreshToken(
+    request: FastifyRequest<{Body: RefreshTokenInput}>,
+    reply: FastifyReply
+  ) {
+    try {
+      const {refreshToken} = request.body;
+      const result = await RefreshTokenService.rotate(refreshToken);
+      const {user, refreshToken: newRefreshToken} = result;
+      const payload = {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      };
+      const accessToken = request.jwt.sign(payload, {expiresIn: '1h'});
+      return reply.code(200).send({accessToken, refreshToken: newRefreshToken});
+    } catch (err: any) {
+      console.error(err);
+      return reply.code(401).send({message: 'Invalid refresh token'});
+    }
+  }
+
+  public static async logout(
+    request: FastifyRequest<{Body: RefreshTokenInput}>,
+    reply: FastifyReply
+  ) {
+    try {
+      const {refreshToken} = request.body;
+      await RefreshTokenService.revoke(refreshToken);
+      return reply.code(200).send({message: 'Logged out'});
+    } catch (err: any) {
+      console.error(err);
+      return reply.code(500).send({message: 'Failed to logout'});
     }
   }
 }

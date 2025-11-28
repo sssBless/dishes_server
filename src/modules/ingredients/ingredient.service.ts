@@ -7,6 +7,9 @@ export interface CreateIngredientInput {
     breadUnitsIn1g: number;
     caloriesPer100g: number;
     unit?: string;
+    gramsPerPiece?: number;
+    caloriesPerPiece?: number;
+    densityGPerMl?: number;
 }
 
 export interface UpdateIngredientInput {
@@ -16,6 +19,9 @@ export interface UpdateIngredientInput {
     breadUnitsIn1g?: number;
     caloriesPer100g?: number;
     unit?: string;
+    gramsPerPiece?: number;
+    caloriesPerPiece?: number;
+    densityGPerMl?: number;
 }
 
 export default class IngredientService {
@@ -26,7 +32,10 @@ export default class IngredientService {
             glycemicIndex: data.glycemicIndex,
             breadUnitsIn1g: data.breadUnitsIn1g,
             caloriesPer100g: data.caloriesPer100g,
-            unit: data.unit || 'g'
+            unit: data.unit || 'g',
+            gramsPerPiece: data.gramsPerPiece,
+            caloriesPerPiece: data.caloriesPerPiece,
+            densityGPerMl: data.densityGPerMl
         };
         
         const ingredient = await prisma.ingredients.create({

@@ -30,6 +30,7 @@ model Users {
     role UserRole @default(USER)
 
     dishes Dishes[]
+    refreshTokens RefreshTokens[]
 }
 
 model Dishes {
@@ -57,6 +58,10 @@ model Ingredients {
     breadUnitsIn1g Float
     caloriesPer100g Float @default(0)
     unit String @default("g")
+  // Optional nutrition helpers
+  gramsPerPiece Float?
+  caloriesPerPiece Float?
+  densityGPerMl Float?
 
     dishes DishIngredients[]
 }
@@ -72,4 +77,14 @@ model DishIngredients {
     @@id([dishId, ingredientId])
     @@index([dishId])
     @@index([ingredientId])
+}
+
+model RefreshTokens {
+    id Int @id @default(autoincrement())
+    tokenHash String @unique
+    userId Int
+    user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now())
+    expiresAt DateTime
+    revokedAt DateTime?
 }

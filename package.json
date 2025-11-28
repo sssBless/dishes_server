@@ -5,8 +5,7 @@
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "node build/app.js",
-    "seed": "tsx prisma/seed.ts"
+    "dev": "node build/app.js"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",

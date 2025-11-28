@@ -15,6 +15,12 @@ export const loginSchema = z.object({
   }).strict()
 });
 
+export const refreshTokenSchema = z.object({
+  body: z.object({
+    refreshToken: z.string().min(1, "Refresh token is required"),
+  }).strict()
+});
+
 export const updateUserSchema = z.object({
   params: z.object({
     id: z.string().regex(/^\d+$/, "ID must be a number"),

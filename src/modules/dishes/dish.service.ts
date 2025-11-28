@@ -26,6 +26,61 @@ export interface DishIngredientInput {
 }
 
 export default class DishService {
+    private static computeNutrition(dish: any) {
+        let totalCalories = 0;
+        let totalWeight = 0;
+        let weightedGi = 0;
+        let totalBreadUnits = 0;
+
+        for (const di of dish.ingredients) {
+            const ingredient = di.ingredient;
+            const unit = di.unit || 'g';
+            const quantity = di.quantity || 0;
+
+            let grams = 0;
+            if (unit === 'g' || unit === 'гр' || unit.toLowerCase() === 'g') {
+                grams = quantity;
+            } else if (unit === 'кг') {
+                grams = quantity * 1000;
+            } else if (unit === 'мл') {
+                const density = ingredient.densityGPerMl ?? 1;
+                grams = quantity * density;
+            } else if (unit === 'шт') {
+                const gramsPerPiece = ingredient.gramsPerPiece ?? 0;
+                grams = gramsPerPiece * quantity;
+            } else if (unit === 'ст.л.') {
+                grams = quantity * 15;
+            } else if (unit === 'ч.л.') {
+                grams = quantity * 5;
+            } else if (unit === 'стакан') {
+                grams = quantity * 200;
+            } else {
+                grams = quantity;
+            }
+
+            if (grams <= 0) continue;
+
+            totalWeight += grams;
+            weightedGi += (ingredient.glycemicIndex || 0) * grams;
+            totalBreadUnits += (ingredient.breadUnitsIn1g || 0) * grams;
+
+            // calories: prefer calories per piece if unit is piece and provided
+            if (unit === 'шт' && ingredient.caloriesPerPiece != null) {
+                totalCalories += ingredient.caloriesPerPiece * quantity;
+            } else {
+                const cals100 = ingredient.caloriesPer100g || 0;
+                totalCalories += (cals100 * grams) / 100;
+            }
+        }
+
+        const avgGi = totalWeight > 0 ? weightedGi / totalWeight : 0;
+        return {
+            calories: Math.round(totalCalories),
+            glycemicIndex: Math.round(avgGi),
+            totalBreadUnits: Math.round(totalBreadUnits * 100) / 100
+        };
+    }
+
     public static async createDish(data: CreateDishInput) {
         const {ingredients, ...rest} = data;
         
@@ -55,7 +110,8 @@ export default class DishService {
         // Transform image path to full URL
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null
+            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            nutrition: DishService.computeNutrition(dish)
         };
     }
 
@@ -87,7 +143,8 @@ export default class DishService {
         // Transform image paths to full URLs
         return dishes.map(dish => ({
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null
+            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            nutrition: DishService.computeNutrition(dish)
         }));
     }
 
@@ -115,7 +172,8 @@ export default class DishService {
         // Transform image path to full URL
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null
+            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            nutrition: DishService.computeNutrition(dish)
         };
     }
 
@@ -151,7 +209,8 @@ export default class DishService {
         // Transform image path to full URL
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null
+            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            nutrition: DishService.computeNutrition(dish)
         };
     }
 
@@ -181,7 +240,8 @@ export default class DishService {
         // Transform image path to full URL
         return {
             ...dish,
-            imageUrl: `/images/${dish.image}`
+            imageUrl: `/images/${dish.image}`,
+            nutrition: DishService.computeNutrition(dish)
         };
     }
 
@@ -225,7 +285,8 @@ export default class DishService {
         // Transform image path to full URL
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null
+            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            nutrition: DishService.computeNutrition(dish)
         };
     }
 
@@ -255,7 +316,8 @@ export default class DishService {
         // Transform image path to full URL
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null
+            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            nutrition: DishService.computeNutrition(dish)
         };
     }
 }
