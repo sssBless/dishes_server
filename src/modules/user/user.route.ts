@@ -5,7 +5,8 @@ import {
   loginSchema,
   updateUserSchema,
   userIdSchema,
-  changeRoleSchema
+  changeRoleSchema,
+  refreshTokenSchema
 } from "./user.schema.js";
 
 async function userRoutes(server: FastifyInstance) {
@@ -18,6 +19,16 @@ async function userRoutes(server: FastifyInstance) {
     server.post('/login', { 
       schema: loginSchema,
       handler: UserController.login 
+    });
+    
+    server.post('/refresh', {
+      schema: refreshTokenSchema,
+      handler: UserController.refreshToken 
+    });
+    
+    server.post('/logout', {
+      schema: refreshTokenSchema,
+      handler: UserController.logout 
     });
     
     // Protected routes

@@ -54,6 +54,7 @@ export const updateDishIngredientsSchema = z.object({
       z.object({
         ingredientId: z.number().int().positive("Ingredient ID must be a positive number"),
         quantity: z.number().positive("Quantity must be positive"),
+        unit: z.string().min(1, "Unit is required").max(20, "Unit must be at most 20 characters").optional(),
       }).strict()
     ).min(1, "At least one ingredient is required"),
   }).strict()

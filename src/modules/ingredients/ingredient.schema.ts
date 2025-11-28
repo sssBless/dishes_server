@@ -8,6 +8,9 @@ export const createIngredientSchema = z.object({
     breadUnitsIn1g: z.number().positive("Bread units must be positive"),
     caloriesPer100g: z.number().nonnegative("Calories per 100g must be non-negative"),
     unit: z.string().min(1, "Unit is required").max(10, "Unit must be at most 10 characters").default("g"),
+    gramsPerPiece: z.number().positive("gramsPerPiece must be positive").optional(),
+    caloriesPerPiece: z.number().nonnegative("caloriesPerPiece must be non-negative").optional(),
+    densityGPerMl: z.number().positive("densityGPerMl must be positive").optional(),
   }).strict()
 });
 
@@ -22,6 +25,9 @@ export const updateIngredientSchema = z.object({
     breadUnitsIn1g: z.number().positive("Bread units must be positive").optional(),
     caloriesPer100g: z.number().nonnegative("Calories per 100g must be non-negative").optional(),
     unit: z.string().min(1, "Unit cannot be empty").max(10, "Unit must be at most 10 characters").optional(),
+    gramsPerPiece: z.number().positive("gramsPerPiece must be positive").optional(),
+    caloriesPerPiece: z.number().nonnegative("caloriesPerPiece must be non-negative").optional(),
+    densityGPerMl: z.number().positive("densityGPerMl must be positive").optional(),
   }).strict().refine(data => Object.keys(data).length > 0, {
     message: "At least one field must be provided"
   })

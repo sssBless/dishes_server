@@ -2,11 +2,14 @@ import buildServer from "./server.js";
 
 const server  = buildServer()
 
+const port = Number(process.env.PORT) || 3000
+const host = '0.0.0.0'
+
 async function main() {
     try {
-        await server.listen({port: 3000, host: 'localhost'})
+        await server.listen({port, host})
 
-        console.log(`Server ready at http://localhost:3000`)
+        console.log(`Server ready on ${host}:${port} (access via your PC IP)`)        
     } catch (err: any) {
         console.error(err)
         process.exit(1)

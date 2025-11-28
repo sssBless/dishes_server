@@ -37,7 +37,7 @@ declare module 'fastify-jwt' {
 }
 
 function buildServer() {
-  const server = Fastify().withTypeProvider<ZodTypeProvider>();
+  const server = Fastify({logger: true}).withTypeProvider<ZodTypeProvider>();
 
   server.register(cors, {
     origin: true,
