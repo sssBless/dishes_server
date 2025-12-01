@@ -73,7 +73,10 @@ function buildServer() {
       try {
         await request.jwtVerify();
       } catch (err: any) {
-        return reply.send(err);
+        return reply.code(401).send({
+          message: 'Unauthorized',
+          error: err.message || 'Invalid or missing token'
+        });
       }
     }
   );
@@ -81,6 +84,28 @@ function buildServer() {
   server.get('/healthcheck', async function () {
     return {status: 'OK'};
   });
+
+  // Hook to handle empty JSON bodies for favorite endpoints (before validation)
+  server.addHook(
+    'preValidation',
+    (
+      request: FastifyRequest,
+      reply: FastifyReply,
+      next: HookHandlerDoneFunction
+    ) => {
+      // Allow empty body for favorite endpoints
+      if ((request.url.includes('/favorite') && (request.method === 'POST' || request.method === 'DELETE'))) {
+        const contentType = request.headers['content-type'];
+        const contentLength = request.headers['content-length'];
+        
+        if (contentType?.includes('application/json') && (contentLength === '0' || contentLength === undefined)) {
+          // Remove Content-Type header for empty bodies to avoid Fastify validation error
+          delete request.headers['content-type'];
+        }
+      }
+      return next();
+    }
+  );
 
   server.addHook(
     'preHandler',

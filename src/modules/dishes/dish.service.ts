@@ -107,10 +107,13 @@ export default class DishService {
             }
         });
 
-        // Transform image path to full URL
+        // Transform image path to full URL or keep emoji as is
+        const imageUrl = dish.image 
+            ? (dish.image.startsWith('dishes/') ? `/images/${dish.image}` : dish.image) // If it's a file path, add /images/, otherwise keep as is (for emoji)
+            : null;
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            imageUrl,
             nutrition: DishService.computeNutrition(dish)
         };
     }
@@ -140,15 +143,24 @@ export default class DishService {
             }
         });
 
-        // Transform image paths to full URLs
-        return dishes.map(dish => ({
-            ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null,
-            nutrition: DishService.computeNutrition(dish)
-        }));
+        // Transform image paths to full URLs or keep emoji as is
+        return dishes.map(dish => {
+            const imageUrl = dish.image 
+                ? (dish.image.startsWith('dishes/') ? `/images/${dish.image}` : dish.image) // If it's a file path, add /images/, otherwise keep as is (for emoji)
+                : null;
+            return {
+                ...dish,
+                imageUrl,
+                nutrition: DishService.computeNutrition(dish)
+            };
+        });
     }
 
     public static async getDishById(id: number) {
+        if (!id || isNaN(id)) {
+            throw new Error('Invalid dish ID');
+        }
+        
         const dish = await prisma.dishes.findUnique({
             where: {id},
             include: {
@@ -169,10 +181,13 @@ export default class DishService {
 
         if (!dish) return null;
 
-        // Transform image path to full URL
+        // Transform image path to full URL or keep emoji as is
+        const imageUrl = dish.image 
+            ? (dish.image.startsWith('dishes/') ? `/images/${dish.image}` : dish.image) // If it's a file path, add /images/, otherwise keep as is (for emoji)
+            : null;
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            imageUrl,
             nutrition: DishService.computeNutrition(dish)
         };
     }
@@ -206,10 +221,13 @@ export default class DishService {
             }
         });
 
-        // Transform image path to full URL
+        // Transform image path to full URL or keep emoji as is
+        const imageUrl = dish.image 
+            ? (dish.image.startsWith('dishes/') ? `/images/${dish.image}` : dish.image) // If it's a file path, add /images/, otherwise keep as is (for emoji)
+            : null;
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            imageUrl,
             nutrition: DishService.computeNutrition(dish)
         };
     }
@@ -237,7 +255,7 @@ export default class DishService {
             }
         });
 
-        // Transform image path to full URL
+        // Transform image path to full URL (updateDishImage always receives a file path)
         return {
             ...dish,
             imageUrl: `/images/${dish.image}`,
@@ -282,10 +300,13 @@ export default class DishService {
             }
         });
 
-        // Transform image path to full URL
+        // Transform image path to full URL or keep emoji as is
+        const imageUrl = dish.image 
+            ? (dish.image.startsWith('dishes/') ? `/images/${dish.image}` : dish.image) // If it's a file path, add /images/, otherwise keep as is (for emoji)
+            : null;
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            imageUrl,
             nutrition: DishService.computeNutrition(dish)
         };
     }
@@ -313,12 +334,111 @@ export default class DishService {
             }
         });
 
-        // Transform image path to full URL
+        // Transform image path to full URL or keep emoji as is
+        const imageUrl = dish.image 
+            ? (dish.image.startsWith('dishes/') ? `/images/${dish.image}` : dish.image) // If it's a file path, add /images/, otherwise keep as is (for emoji)
+            : null;
         return {
             ...dish,
-            imageUrl: dish.image ? `/images/${dish.image}` : null,
+            imageUrl,
             nutrition: DishService.computeNutrition(dish)
         };
+    }
+
+    public static async addToFavorites(userId: number, dishId: number) {
+        // Check if dish exists
+        const dish = await prisma.dishes.findUnique({where: {id: dishId}});
+        if (!dish) {
+            throw new Error('Dish not found');
+        }
+
+        // Check if already in favorites
+        const existing = await prisma.favoriteDishes.findUnique({
+            where: {
+                userId_dishId: {
+                    userId,
+                    dishId
+                }
+            }
+        });
+
+        if (existing) {
+            return {message: 'Dish already in favorites'};
+        }
+
+        await prisma.favoriteDishes.create({
+            data: {
+                userId,
+                dishId
+            }
+        });
+
+        return {message: 'Dish added to favorites'};
+    }
+
+    public static async removeFromFavorites(userId: number, dishId: number) {
+        await prisma.favoriteDishes.deleteMany({
+            where: {
+                userId,
+                dishId
+            }
+        });
+
+        return {message: 'Dish removed from favorites'};
+    }
+
+    public static async getFavoriteDishes(userId: number) {
+        const favorites = await prisma.favoriteDishes.findMany({
+            where: {userId},
+            include: {
+                dish: {
+                    include: {
+                        author: {
+                            select: {
+                                id: true,
+                                username: true,
+                                email: true
+                            }
+                        },
+                        ingredients: {
+                            include: {
+                                ingredient: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+
+        // Filter out any favorites where the dish was deleted
+        return favorites
+            .filter(fav => fav.dish != null)
+            .map(fav => {
+                const imageUrl = fav.dish!.image 
+                    ? (fav.dish!.image.startsWith('dishes/') ? `/images/${fav.dish!.image}` : fav.dish!.image) // If it's a file path, add /images/, otherwise keep as is (for emoji)
+                    : null;
+                return {
+                    ...fav.dish!,
+                    imageUrl,
+                    nutrition: DishService.computeNutrition(fav.dish!)
+                };
+            });
+    }
+
+    public static async isFavorite(userId: number, dishId: number): Promise<boolean> {
+        const favorite = await prisma.favoriteDishes.findUnique({
+            where: {
+                userId_dishId: {
+                    userId,
+                    dishId
+                }
+            }
+        });
+
+        return !!favorite;
     }
 }
 

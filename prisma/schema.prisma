@@ -31,6 +31,7 @@ model Users {
 
     dishes Dishes[]
     refreshTokens RefreshTokens[]
+    favoriteDishes FavoriteDishes[]
 }
 
 model Dishes {
@@ -48,6 +49,7 @@ model Dishes {
 
     author Users @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
     ingredients DishIngredients[]
+    favoriteDishes FavoriteDishes[]
 }
 
 model Ingredients {
@@ -87,4 +89,17 @@ model RefreshTokens {
     createdAt DateTime @default(now())
     expiresAt DateTime
     revokedAt DateTime?
+}
+
+model FavoriteDishes {
+    userId Int
+    dishId Int
+    createdAt DateTime @default(now())
+    
+    user Users @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    dish Dishes @relation(fields: [dishId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    
+    @@id([userId, dishId])
+    @@index([userId])
+    @@index([dishId])
 }

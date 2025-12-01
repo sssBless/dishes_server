@@ -47,7 +47,22 @@ export default class DishController {
         reply: FastifyReply
     ) {
         try {
-            const id = parseInt(request.params.id);
+            // Early validation - if id is not a number, return 400 before any Prisma call
+            const idParam = request.params.id;
+            if (!idParam || typeof idParam !== 'string') {
+                return reply.code(400).send({message: 'Dish ID is required'});
+            }
+            
+            // Check if it's a reserved word like 'favorites'
+            if (idParam === 'favorites' || idParam === 'favorite') {
+                return reply.code(404).send({message: 'Dish not found'});
+            }
+            
+            const id = parseInt(idParam);
+            if (isNaN(id) || id <= 0) {
+                return reply.code(400).send({message: 'Invalid dish ID - must be a positive number'});
+            }
+            
             const dish = await DishService.getDishById(id);
             
             if (!dish) {
@@ -56,8 +71,8 @@ export default class DishController {
             
             return reply.code(200).send(dish);
         } catch (err: any) {
-            console.error(err);
-            return reply.code(500).send(err);
+            console.error('Error getting dish by ID:', err);
+            return reply.code(500).send({message: err.message || 'Internal server error'});
         }
     }
 
@@ -67,11 +82,14 @@ export default class DishController {
     ) {
         try {
             const id = parseInt(request.params.id);
+            if (isNaN(id)) {
+                return reply.code(400).send({message: 'Invalid dish ID'});
+            }
             const dish = await DishService.updateDish(id, request.body);
             return reply.code(200).send(dish);
         } catch (err: any) {
-            console.error(err);
-            return reply.code(500).send(err);
+            console.error('Error updating dish:', err);
+            return reply.code(500).send({message: err.message || 'Internal server error'});
         }
     }
 
@@ -81,11 +99,14 @@ export default class DishController {
     ) {
         try {
             const id = parseInt(request.params.id);
+            if (isNaN(id)) {
+                return reply.code(400).send({message: 'Invalid dish ID'});
+            }
             await DishService.deleteDish(id);
             return reply.code(200).send({message: 'Dish deleted successfully'});
         } catch (err: any) {
-            console.error(err);
-            return reply.code(500).send(err);
+            console.error('Error deleting dish:', err);
+            return reply.code(500).send({message: err.message || 'Internal server error'});
         }
     }
 
@@ -95,11 +116,14 @@ export default class DishController {
     ) {
         try {
             const id = parseInt(request.params.id);
+            if (isNaN(id)) {
+                return reply.code(400).send({message: 'Invalid dish ID'});
+            }
             const dish = await DishService.updateDishIngredients(id, request.body.ingredients);
             return reply.code(200).send(dish);
         } catch (err: any) {
-            console.error(err);
-            return reply.code(500).send(err);
+            console.error('Error updating dish ingredients:', err);
+            return reply.code(500).send({message: err.message || 'Internal server error'});
         }
     }
 
@@ -109,11 +133,14 @@ export default class DishController {
     ) {
         try {
             const id = parseInt(request.params.id);
+            if (isNaN(id)) {
+                return reply.code(400).send({message: 'Invalid dish ID'});
+            }
             const dish = await DishService.changeDishStatus(id, request.body.status);
             return reply.code(200).send(dish);
         } catch (err: any) {
-            console.error(err);
-            return reply.code(500).send(err);
+            console.error('Error changing dish status:', err);
+            return reply.code(500).send({message: err.message || 'Internal server error'});
         }
     }
 
@@ -123,6 +150,9 @@ export default class DishController {
     ) {
         try {
             const id = parseInt(request.params.id);
+            if (isNaN(id)) {
+                return reply.code(400).send({message: 'Invalid dish ID'});
+            }
             
             // Check if dish exists
             const dish = await DishService.getDishById(id);
@@ -183,6 +213,86 @@ export default class DishController {
         } catch (err: any) {
             console.error(err);
             return reply.code(500).send(err);
+        }
+    }
+
+    public static async addToFavorites(
+        request: FastifyRequest<{Params: {id: string}}>,
+        reply: FastifyReply
+    ) {
+        try {
+            const dishId = parseInt(request.params.id);
+            const userId = (request.user as any)?.id;
+            
+            if (isNaN(dishId) || !userId) {
+                return reply.code(400).send({message: 'Invalid dish ID or user ID'});
+            }
+            
+            const result = await DishService.addToFavorites(userId, dishId);
+            return reply.code(200).send(result);
+        } catch (err: any) {
+            console.error('Error adding to favorites:', err);
+            if (err.message === 'Dish not found') {
+                return reply.code(404).send({message: err.message});
+            }
+            return reply.code(500).send({message: err.message || 'Internal server error'});
+        }
+    }
+
+    public static async removeFromFavorites(
+        request: FastifyRequest<{Params: {id: string}}>,
+        reply: FastifyReply
+    ) {
+        try {
+            const dishId = parseInt(request.params.id);
+            const userId = (request.user as any)?.id;
+            
+            if (isNaN(dishId) || !userId) {
+                return reply.code(400).send({message: 'Invalid dish ID or user ID'});
+            }
+            
+            const result = await DishService.removeFromFavorites(userId, dishId);
+            return reply.code(200).send(result);
+        } catch (err: any) {
+            console.error('Error removing from favorites:', err);
+            return reply.code(500).send({message: err.message || 'Internal server error'});
+        }
+    }
+
+    public static async getFavoriteDishes(
+        request: FastifyRequest,
+        reply: FastifyReply
+    ) {
+        try {
+            const userId = (request.user as any)?.id;
+            if (!userId) {
+                return reply.code(400).send({message: 'User ID is required'});
+            }
+            const dishes = await DishService.getFavoriteDishes(userId);
+            return reply.code(200).send(dishes);
+        } catch (err: any) {
+            console.error('Error getting favorite dishes:', err);
+            return reply.code(500).send({message: err.message || 'Internal server error'});
+        }
+    }
+
+    public static async checkFavorite(
+        request: FastifyRequest<{Params: {id: string}}>,
+        reply: FastifyReply
+    ) {
+        try {
+            const dishId = parseInt(request.params.id);
+            const userId = (request.user as any)?.id;
+            
+            if (isNaN(dishId) || !userId) {
+                return reply.code(400).send({message: 'Invalid dish ID or user ID'});
+            }
+            
+            const isFavorite = await DishService.isFavorite(userId, dishId);
+            return reply.code(200).send({isFavorite});
+        } catch (err: any) {
+            console.error('Error checking favorite:', err);
+            return reply.code(500).send({message: err.message || 'Internal server error'});
         }
     }
 }
