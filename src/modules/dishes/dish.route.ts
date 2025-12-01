@@ -6,7 +6,8 @@ import {
   dishIdSchema,
   getAllDishesSchema,
   updateDishIngredientsSchema,
-  changeStatusSchema
+  changeStatusSchema,
+  favoriteDishIdSchema
 } from "./dish.schema.js";
 
 async function dishRoutes(server: FastifyInstance) {
@@ -22,6 +23,34 @@ async function dishRoutes(server: FastifyInstance) {
       handler: DishController.createDish 
     });
     
+    // Favorites endpoints - must be registered BEFORE /:id route
+    // Using explicit route to avoid conflict with /:id
+    server.get('/favorites', {
+      preHandler: [server.authenticate],
+      handler: DishController.getFavoriteDishes 
+    });
+    
+    // Routes with /:id/favorite must come before /:id
+    server.get('/:id/favorite', {
+      schema: favoriteDishIdSchema,
+      preHandler: [server.authenticate],
+      handler: DishController.checkFavorite 
+    });
+    
+    server.post('/:id/favorite', {
+      schema: favoriteDishIdSchema,
+      preHandler: [server.authenticate],
+      handler: DishController.addToFavorites
+    });
+
+    server.delete('/:id/favorite', {
+      schema: favoriteDishIdSchema,
+      preHandler: [server.authenticate],
+      handler: DishController.removeFromFavorites
+    });
+    
+    // This route should only match numeric IDs, but Fastify will match any string
+    // So we validate in the controller
     server.get('/:id', {
       schema: dishIdSchema,
       preHandler: [server.authenticate],
