@@ -5,7 +5,13 @@
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "node build/app.js"
+    "dev": "node build/app.js",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "start:local": "npm run db:push && npm run db:seed && npm run build && npm run dev"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",

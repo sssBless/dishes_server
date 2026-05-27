@@ -14,7 +14,7 @@ export const createDishSchema = z.object({
         unit: z.string().min(1, "Unit is required").max(20, "Unit must be at most 20 characters").optional(),
       }).strict()
     ).optional(),
-    image: z.string().max(100, "Image must be at most 100 characters").optional(), // For emoji icons or image paths
+    image: z.string().max(2048, "Image must be at most 2048 characters").optional(), // For emoji icons, local image paths, or external URLs
   }).strict()
 });
 
@@ -28,7 +28,7 @@ export const updateDishSchema = z.object({
     recipe: z.string().max(2000, "Recipe must be at most 2000 characters").optional(),
     cookingTime: z.number().int().positive("Cooking time must be positive").optional(),
     status: z.enum(["PENDING", "REJECTED", "ACCEPTED"]).optional(),
-    image: z.string().max(100, "Image must be at most 100 characters").optional(), // For emoji icons or image paths
+    image: z.string().max(2048, "Image must be at most 2048 characters").optional(), // For emoji icons, local image paths, or external URLs
   }).strict().refine(data => Object.keys(data).length > 0, {
     message: "At least one field must be provided"
   })
