@@ -7,10 +7,6 @@ import {JWT} from 'fastify-jwt';
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
-import fastifyStatic from '@fastify/static';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs/promises';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import userRoutes from './modules/user/user.route.js';
 import dishRoutes from './modules/dishes/dish.route.js';
@@ -46,22 +42,7 @@ function buildServer() {
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // Register multipart for file uploads
   server.register(multipart);
-
-  // Register static file serving
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const resourcesPath = path.join(__dirname, '../resources');
-  
-  // Ensure resources directory exists (async, but don't block)
-  fs.mkdir(resourcesPath, { recursive: true }).catch(() => {});
-  fs.mkdir(path.join(resourcesPath, 'dishes'), { recursive: true }).catch(() => {});
-  
-  server.register(fastifyStatic, {
-    root: resourcesPath,
-    prefix: '/images/',
-  });
 
   server.register(jwt, {
     secret: process.env.JWT_SECRET!,

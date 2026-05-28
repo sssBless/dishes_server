@@ -1,7 +1,10 @@
 import {FastifyReply, FastifyRequest} from 'fastify';
-import fs from 'fs/promises';
-import path from 'path';
 import DishService, {CreateDishInput, UpdateDishInput, DishIngredientInput} from './dish.service.js';
+import {
+    deleteCloudinaryImage,
+    isCloudinaryImageUrl,
+    uploadDishImage,
+} from '../../utils/cloudinary.js';
 
 export interface ChangeStatusInput {
     status: 'PENDING' | 'REJECTED' | 'ACCEPTED';
@@ -172,38 +175,18 @@ export default class DishController {
                 return reply.code(400).send({message: 'Invalid file type. Only images are allowed'});
             }
 
-            // Check file size (max 5MB)
-            if (data.file.readableLength > 5 * 1024 * 1024) {
+            const buffer = await data.toBuffer();
+
+            if (buffer.length > 5 * 1024 * 1024) {
                 return reply.code(400).send({message: 'File too large. Maximum size is 5MB'});
             }
 
-            // Create unique filename
-            const fileExtension = path.extname(data.filename);
-            const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substring(7)}${fileExtension}`;
-            const dishesDir = path.join(process.cwd(), 'resources', 'dishes');
-            
-            // Ensure dishes directory exists
-            try {
-                await fs.mkdir(dishesDir, { recursive: true });
-            } catch (err) {
-                // Directory might already exist, ignore error
-            }
-            
-            const uploadPath = path.join(dishesDir, uniqueFilename);
+            const { secureUrl } = await uploadDishImage(buffer);
+            const updatedDish = await DishService.updateDishImage(id, secureUrl);
 
-            // Save file
-            const buffer = await data.toBuffer();
-            await fs.writeFile(uploadPath, buffer);
-
-            // Update dish with image path
-            const imagePath = `dishes/${uniqueFilename}`;
-            const updatedDish = await DishService.updateDishImage(id, imagePath);
-
-            // Delete old image if exists
-            if (dish.image) {
-                const oldImagePath = path.join(process.cwd(), 'resources', dish.image);
+            if (dish.image && isCloudinaryImageUrl(dish.image)) {
                 try {
-                    await fs.unlink(oldImagePath);
+                    await deleteCloudinaryImage(dish.image);
                 } catch (err) {
                     console.warn('Could not delete old image:', err);
                 }

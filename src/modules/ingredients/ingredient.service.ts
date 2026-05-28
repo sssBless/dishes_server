@@ -1,4 +1,5 @@
-import prisma from "../../utils/prisma.js";
+import { getNextId } from "../../utils/getNextId.js";
+import { Ingredient } from "../../models/Ingredient.js";
 
 export interface CreateIngredientInput {
     name: string;
@@ -26,57 +27,40 @@ export interface UpdateIngredientInput {
 
 export default class IngredientService {
     public static async createIngredient(data: CreateIngredientInput) {
-        const ingredientData: any = {
+        const id = await getNextId("ingredient");
+        const ingredient = await Ingredient.create({
+            id,
             name: data.name,
             abbreviation: data.abbreviation,
             glycemicIndex: data.glycemicIndex,
             breadUnitsIn1g: data.breadUnitsIn1g,
             caloriesPer100g: data.caloriesPer100g,
-            unit: data.unit || 'g',
-            gramsPerPiece: data.gramsPerPiece,
-            caloriesPerPiece: data.caloriesPerPiece,
-            densityGPerMl: data.densityGPerMl
-        };
-        
-        const ingredient = await prisma.ingredients.create({
-            data: ingredientData
+            unit: data.unit || "g",
+            gramsPerPiece: data.gramsPerPiece ?? null,
+            caloriesPerPiece: data.caloriesPerPiece ?? null,
+            densityGPerMl: data.densityGPerMl ?? null,
         });
 
-        return ingredient;
+        return ingredient.toObject();
     }
 
     public static async getAllIngredients() {
-        return prisma.ingredients.findMany({
-            orderBy: {
-                name: 'asc'
-            }
-        });
+        return Ingredient.find().sort({ name: 1 }).lean();
     }
 
     public static async getIngredientById(id: number) {
-        return prisma.ingredients.findUnique({
-            where: {id}
-        });
+        return Ingredient.findOne({ id }).lean();
     }
 
     public static async getIngredientByName(name: string) {
-        return prisma.ingredients.findUnique({
-            where: {name}
-        });
+        return Ingredient.findOne({ name }).lean();
     }
 
     public static async updateIngredient(id: number, data: UpdateIngredientInput) {
-        return await prisma.ingredients.update({
-            where: {id},
-            data
-        });
+        return Ingredient.findOneAndUpdate({ id }, data, { new: true }).lean();
     }
 
     public static async deleteIngredient(id: number) {
-        return await prisma.ingredients.delete({
-            where: {id}
-        });
+        return Ingredient.deleteOne({ id });
     }
-
 }
-

@@ -1,11 +1,8 @@
 node_modules
-
 .vscode
-
-.env.local
-
 build
-
 migrations
-
 resources
+.env
+seed-icons/*.svg
+seed-icons/manifest.json

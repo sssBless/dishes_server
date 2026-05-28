@@ -1,8 +1,17 @@
+import "../src/loadEnv.js";
 import crypto from "node:crypto";
-import { PrismaClient } from "@prisma/client";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { connectDatabase, disconnectDatabase } from "../src/db/connect.js";
+import { Counter } from "../src/models/Counter.js";
+import { User } from "../src/models/User.js";
+import { Ingredient } from "../src/models/Ingredient.js";
+import { Dish } from "../src/models/Dish.js";
+import { getNextId } from "../src/utils/getNextId.js";
+import { dishImageByName } from "./dish-image-mapping.js";
 
-const prisma = new PrismaClient();
-
+// --- same seed data as before ---
 const baseIngredients = [
   { name: "Картофель", abbreviation: "карт.", glycemicIndex: 85, breadUnitsIn1g: 0.17, caloriesPer100g: 77, unit: "g" },
   { name: "Куриная грудка", abbreviation: "кур.", glycemicIndex: 0, breadUnitsIn1g: 0, caloriesPer100g: 165, unit: "g" },
@@ -26,45 +35,21 @@ const baseIngredients = [
   { name: "Хлеб цельнозерновой", abbreviation: "хлеб", glycemicIndex: 50, breadUnitsIn1g: 0.50, caloriesPer100g: 240, unit: "g" },
 ];
 
-const dishImages = {
-  omelette: "https://www.svgrepo.com/download/295427/omelette.svg",
-  chicken: "https://www.svgrepo.com/download/427360/chicken-turkey-2.svg",
-  salad: "https://www.svgrepo.com/download/244495/salad.svg",
-  salmon: "https://www.svgrepo.com/download/156641/salmon.svg",
-  spaghetti: "https://www.svgrepo.com/download/398366/spaghetti.svg",
-  soup: "https://www.svgrepo.com/download/295437/soup.svg",
-  potatoes: "https://www.svgrepo.com/download/227312/fried-potatoes-french-fries.svg",
-  toast: "https://www.svgrepo.com/download/295500/toast-food-and-restaurant.svg",
-  rice: "https://www.svgrepo.com/download/505200/rice.svg",
-  juice: "https://www.svgrepo.com/download/53093/juice.svg",
-};
-
-const dishImageByName: Record<string, string> = {
-  "Овсяная каша с бананом": dishImages.rice,
-  "Омлет с томатом": dishImages.omelette,
-  "Курица с рисом": dishImages.chicken,
-  "Гречка с говядиной": dishImages.rice,
-  "Салат с авокадо и огурцом": dishImages.salad,
-  "Запеченный лосось с брокколи": dishImages.salmon,
-  "Творожный завтрак с яблоком": dishImages.toast,
-  "Рисовая миска с курицей и овощами": dishImages.rice,
-  "Паста с говядиной": dishImages.spaghetti,
-  "Картофельный омлет": dishImages.omelette,
-  "Теплый салат с курицей": dishImages.salad,
-  "Гречневый боул с авокадо": dishImages.rice,
-  "Запеканка из творога": dishImages.omelette,
-  "Овсянка с яблоком": dishImages.rice,
-  "Суп с курицей и рисом": dishImages.soup,
-  "Лосось с рисом и огурцом": dishImages.salmon,
-  "Паста с томатами": dishImages.spaghetti,
-  "Картофель с говядиной": dishImages.potatoes,
-  "Тост с авокадо и яйцом": dishImages.toast,
-  "Салат с творогом и огурцом": dishImages.salad,
-  "Брокколи с яйцом": dishImages.omelette,
-  "Рис с овощами": dishImages.rice,
-  "Курица с картофелем и луком": dishImages.chicken,
-  "Смузи-боул с бананом и яблоком": dishImages.juice,
-};
+function loadDishImageManifest(): Record<string, string> {
+  const manifestPath = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../seed-icons/manifest.json"
+  );
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(
+      "Нет seed-icons/manifest.json.\n" +
+        "1) Скачайте 10 SVG в seed-icons/ (см. seed-icons/README.md)\n" +
+        "2) npm run icons:upload\n" +
+        "3) npm run db:seed"
+    );
+  }
+  return JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as Record<string, string>;
+}
 
 function hashPassword(password: string) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -72,22 +57,22 @@ function hashPassword(password: string) {
   return { hash, salt };
 }
 
+async function upsertIngredient(data: (typeof baseIngredients)[0]) {
+  let doc = await Ingredient.findOne({ name: data.name });
+  if (!doc) {
+    const id = await getNextId("ingredient");
+    doc = await Ingredient.create({ id, ...data });
+  } else {
+    doc = await Ingredient.findOneAndUpdate({ name: data.name }, data, { new: true });
+  }
+  return doc!;
+}
+
 async function main() {
+  await connectDatabase();
+
   for (const ingredient of baseIngredients) {
-    await prisma.ingredients.upsert({
-      where: { name: ingredient.name },
-      update: {
-        abbreviation: ingredient.abbreviation,
-        glycemicIndex: ingredient.glycemicIndex,
-        breadUnitsIn1g: ingredient.breadUnitsIn1g,
-        caloriesPer100g: ingredient.caloriesPer100g,
-        unit: ingredient.unit,
-        gramsPerPiece: ingredient.gramsPerPiece ?? null,
-        caloriesPerPiece: ingredient.caloriesPerPiece ?? null,
-        densityGPerMl: ingredient.densityGPerMl ?? null,
-      },
-      create: ingredient,
-    });
+    await upsertIngredient(ingredient);
   }
 
   const seedUsers = [
@@ -103,27 +88,28 @@ async function main() {
 
   for (const user of seedUsers) {
     const { hash, salt } = hashPassword(user.password);
-    const upserted = await prisma.users.upsert({
-      where: { email: user.email },
-      update: {
-        username: user.username,
-        role: user.role,
-      },
-      create: {
+    let doc = await User.findOne({ email: user.email });
+    if (!doc) {
+      const id = await getNextId("user");
+      doc = await User.create({
+        id,
         username: user.username,
         email: user.email,
         password: hash,
         salt,
         role: user.role,
-      },
-      select: { id: true, email: true },
-    });
-    usersByEmail.set(upserted.email, upserted.id);
+      });
+    } else {
+      doc = await User.findOneAndUpdate(
+        { email: user.email },
+        { username: user.username, role: user.role, updatedAt: new Date() },
+        { new: true }
+      );
+    }
+    usersByEmail.set(doc!.email, doc!.id);
   }
 
-  const ingredients = await prisma.ingredients.findMany({
-    select: { id: true, name: true },
-  });
+  const ingredients = await Ingredient.find().select("id name").lean();
   const ingredientIds = new Map(ingredients.map((i) => [i.name, i.id]));
   const ing = (name: string) => {
     const id = ingredientIds.get(name);
@@ -165,46 +151,74 @@ async function main() {
     { name: "Смузи-боул с бананом и яблоком", description: "Фруктовый быстрый завтрак.", recipe: "Взбить молоко, банан и яблоко в блендере.", cookingTime: 6, author: "olga@gmail.com", ingredients: [{ name: "Молоко", quantity: 220, unit: "мл" }, { name: "Банан", quantity: 110, unit: "g" }, { name: "Яблоко", quantity: 90, unit: "g" }] },
   ];
 
+  const dishImageManifest = loadDishImageManifest();
+  let maxDishId = 0;
+
+  console.log("Картинки блюд: seed-icons/manifest.json (уникальный URL на каждое блюдо)");
+
   for (let i = 0; i < dishes.length; i++) {
     const dish = dishes[i];
     const dishStatus = statusCycle[i] ?? "PENDING";
-    const dishImage = dishImageByName[dish.name] ?? dishImages.salad;
+    const dishImage = dishImageManifest[dish.name];
+    if (!dishImage) {
+      const iconKey = dishImageByName[dish.name] ?? "salad";
+      throw new Error(
+        `Нет URL в manifest для «${dish.name}». Запустите: npm run icons:upload (нужен ${iconKey}.svg)`
+      );
+    }
     const authorId = usersByEmail.get(dish.author);
     if (!authorId) throw new Error(`Author not found: ${dish.author}`);
 
-    const savedDish = await prisma.dishes.upsert({
-      where: { name: dish.name },
-      update: {
-        description: dish.description,
-        recipe: dish.recipe,
-        cookingTime: dish.cookingTime,
-        status: dishStatus,
-        authorId,
-        image: dishImage,
-        updatedAt: new Date(),
-      },
-      create: {
+    const dishIngredients = dish.ingredients.map((item) => ({
+      ingredientId: ing(item.name),
+      quantity: item.quantity,
+      unit: item.unit,
+    }));
+
+    let saved = await Dish.findOne({ name: dish.name });
+    const imageForDb = dishImage;
+
+    if (!saved) {
+      const id = await getNextId("dish");
+      saved = await Dish.create({
+        id,
         name: dish.name,
         description: dish.description,
         recipe: dish.recipe,
         cookingTime: dish.cookingTime,
         status: dishStatus,
         authorId,
-        image: dishImage,
-      },
-      select: { id: true },
-    });
-
-    await prisma.dishIngredients.deleteMany({ where: { dishId: savedDish.id } });
-    await prisma.dishIngredients.createMany({
-      data: dish.ingredients.map((item) => ({
-        dishId: savedDish.id,
-        ingredientId: ing(item.name),
-        quantity: item.quantity,
-        unit: item.unit,
-      })),
-    });
+        image: imageForDb,
+        ingredients: dishIngredients,
+      });
+    } else {
+      saved = await Dish.findOneAndUpdate(
+        { name: dish.name },
+        {
+          description: dish.description,
+          recipe: dish.recipe,
+          cookingTime: dish.cookingTime,
+          status: dishStatus,
+          authorId,
+          image: imageForDb,
+          ingredients: dishIngredients,
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+    }
+    maxDishId = Math.max(maxDishId, saved!.id);
   }
+
+  const maxUserId = Math.max(...(await User.find().select("id").lean()).map((u) => u.id), 0);
+  const maxIngredientId = Math.max(
+    ...(await Ingredient.find().select("id").lean()).map((i) => i.id),
+    0
+  );
+
+  await Counter.findOneAndUpdate({ name: "user" }, { seq: maxUserId }, { upsert: true });
+  await Counter.findOneAndUpdate({ name: "ingredient" }, { seq: maxIngredientId }, { upsert: true });
+  await Counter.findOneAndUpdate({ name: "dish" }, { seq: maxDishId }, { upsert: true });
 
   console.log(`Seed complete: ${seedUsers.length} users, ${baseIngredients.length} ingredients, ${dishes.length} dishes`);
   console.log("Admin login: admin@gmail.com / admin12345");
@@ -216,5 +230,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await disconnectDatabase();
   });

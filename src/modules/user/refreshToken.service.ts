@@ -1,5 +1,7 @@
 import crypto from 'crypto';
-import prisma from '../../utils/prisma.js';
+import { getNextId } from '../../utils/getNextId.js';
+import { RefreshToken } from '../../models/RefreshToken.js';
+import { User } from '../../models/User.js';
 
 const REFRESH_TOKEN_TTL_DAYS = parseInt(process.env.REFRESH_TOKEN_TTL || '7', 10);
 
@@ -17,19 +19,14 @@ export default class RefreshTokenService {
         const tokenHash = hashToken(token);
         const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
 
-        // Remove old tokens for this user to keep only one active
-        await prisma.refreshTokens.deleteMany({
-            where: {
-                userId,
-            },
-        });
+        await RefreshToken.deleteMany({ userId });
 
-        await prisma.refreshTokens.create({
-            data: {
-                tokenHash,
-                userId,
-                expiresAt,
-            },
+        const id = await getNextId('refreshToken');
+        await RefreshToken.create({
+            id,
+            tokenHash,
+            userId,
+            expiresAt,
         });
 
         return {
@@ -40,37 +37,29 @@ export default class RefreshTokenService {
 
     public static async rotate(refreshToken: string) {
         const tokenHash = hashToken(refreshToken);
-        const existing = await prisma.refreshTokens.findUnique({
-            where: { tokenHash },
-            include: {
-                user: true,
-            },
-        });
+        const existing = await RefreshToken.findOne({ tokenHash }).lean();
 
         if (!existing || existing.revokedAt || existing.expiresAt < new Date()) {
             throw new Error('Invalid refresh token');
         }
 
-        await prisma.refreshTokens.update({
-            where: { id: existing.id },
-            data: {
-                revokedAt: new Date(),
-            },
-        });
+        await RefreshToken.updateOne({ id: existing.id }, { revokedAt: new Date() });
+
+        const user = await User.findOne({ id: existing.userId }).lean();
+        if (!user) {
+            throw new Error('Invalid refresh token');
+        }
 
         const { refreshToken: newToken } = await this.create(existing.userId);
 
         return {
-            user: existing.user,
+            user,
             refreshToken: newToken,
         };
     }
 
     public static async revoke(refreshToken: string) {
         const tokenHash = hashToken(refreshToken);
-        await prisma.refreshTokens.deleteMany({
-            where: { tokenHash },
-        });
+        await RefreshToken.deleteMany({ tokenHash });
     }
 }
-
